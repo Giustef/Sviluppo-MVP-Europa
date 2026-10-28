@@ -1,0 +1,12 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,tenant TEXT NOT NULL,title TEXT NOT NULL,capacity INTEGER CHECK(capacity>=0),meal_capacity INTEGER CHECK(meal_capacity>=0),price INTEGER NOT NULL CHECK(price>=0),currency TEXT DEFAULT 'EUR',timezone TEXT DEFAULT 'Europe/Rome');
+CREATE TABLE IF NOT EXISTS registrations(id TEXT PRIMARY KEY,event_id TEXT REFERENCES events(id),name TEXT NOT NULL,meal INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('held','paid','failed','expired')),expires REAL NOT NULL,amount INTEGER NOT NULL,token TEXT UNIQUE NOT NULL,idem TEXT NOT NULL,UNIQUE(event_id,idem));
+CREATE TABLE IF NOT EXISTS payments(id TEXT PRIMARY KEY,registration_id TEXT REFERENCES registrations(id),state TEXT NOT NULL,amount INTEGER NOT NULL,UNIQUE(registration_id));
+CREATE TABLE IF NOT EXISTS scans(id TEXT PRIMARY KEY,registration_id TEXT REFERENCES registrations(id),service TEXT CHECK(service IN ('event','meal')),actor TEXT NOT NULL,created REAL NOT NULL,UNIQUE(registration_id,service));
+CREATE TABLE IF NOT EXISTS incidents(id TEXT PRIMARY KEY,event_id TEXT REFERENCES events(id),actor TEXT NOT NULL,message TEXT,lat REAL,lon REAL,accuracy REAL,state TEXT CHECK(state IN ('received','acknowledged','closed')),assignee TEXT,created REAL,idem TEXT UNIQUE);
+CREATE TABLE IF NOT EXISTS notifications(id TEXT PRIMARY KEY,incident_id TEXT REFERENCES incidents(id),channel TEXT DEFAULT 'staff_demo_inbox',state TEXT DEFAULT 'available_in_inbox');
+CREATE TABLE IF NOT EXISTS audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,actor TEXT NOT NULL,action TEXT NOT NULL,entity TEXT,created REAL);
+CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
+CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
+INSERT OR IGNORE INTO events VALUES('salento','club-demo','Salento Coast Ride',40,30,4500,'EUR','Europe/Rome');
+INSERT OR IGNORE INTO events VALUES('other','club-other','Evento altro club',10,10,2500,'EUR','Europe/Rome');

@@ -1,0 +1,8 @@
+{
+  "name": "progetto-europa-demo",
+  "private": true,
+  "scripts": {
+    "test": "python -m unittest discover -s tests -v",
+    "dev:python": "/usr/bin/python3 server.py"
+  }
+}

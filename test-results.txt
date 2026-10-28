@@ -1,0 +1,22 @@
+test_112_only_manual (test_core.Core.test_112_only_manual) ... ok
+test_audit_immutable (test_core.Core.test_audit_immutable) ... ok
+test_duplicate_meal (test_core.Core.test_duplicate_meal) ... ok
+test_expired_hold_frees_place (test_core.Core.test_expired_hold_frees_place) ... ok
+test_failed_payment_no_pass (test_core.Core.test_failed_payment_no_pass) ... ok
+test_individual_passes (test_core.Core.test_individual_passes) ... ok
+test_last_place_concurrent (test_core.Core.test_last_place_concurrent) ... ok
+test_participant_cannot_scan (test_core.Core.test_participant_cannot_scan) ... ok
+test_payment_idempotency (test_core.Core.test_payment_idempotency) ... ok
+test_qr_svg_real (test_core.Core.test_qr_svg_real) ... ok
+test_registration_idempotency (test_core.Core.test_registration_idempotency) ... ok
+test_restaurant_no_identities_or_finance (test_core.Core.test_restaurant_no_identities_or_finance) ... ok
+test_sos_gps_validation (test_core.Core.test_sos_gps_validation) ... ok
+test_sos_notification_idempotency_and_states (test_core.Core.test_sos_notification_idempotency_and_states) ... ok
+test_sos_restricted (test_core.Core.test_sos_restricted) ... ok
+test_tenant_isolation (test_core.Core.test_tenant_isolation) ... ok
+test_http_auth_csrf_and_headers (test_core.HTTP.test_http_auth_csrf_and_headers) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 1.102s
+
+OK

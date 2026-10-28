@@ -1,0 +1,2 @@
+# Gia incluso in vendor per l'esecuzione senza installazione.
+qrcode==8.2

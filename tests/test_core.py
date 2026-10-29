@@ -7,10 +7,14 @@ class Base(unittest.TestCase):
   self.tmp=tempfile.TemporaryDirectory();app.DB=str(Path(self.tmp.name)/'test.db');app.init()
   self.p={'user':'participant-a','tenant':'club-demo','role':'participant'}
   self.staff={'user':'staff-a','tenant':'club-demo','role':'staff'}
+  self.admin={'user':'admin-a','tenant':'club-demo','role':'admin'}
+  app.SESSIONS.clear();app.LOGIN_ATTEMPTS.clear()
  def tearDown(self): self.tmp.cleanup()
  def reg(self,key='abcdefgh',meal=True): return app.operate(self.p,'register',{'name':'Alex Demo','key':key,'meal':meal})
+ def approved(self,key='abcdefgh',meal=True):
+  r=self.reg(key,meal);app.operate(self.admin,'approve',{'id':r['id']});return r
  def paid(self):
-  r=self.reg();app.operate(self.p,'pay',{'id':r['id'],'success':True});return r
+  r=self.approved();app.operate(self.p,'pay',{'id':r['id'],'success':True});return r
  def problem(self,status,fn):
   with self.assertRaises(app.Problem) as ctx: fn()
   self.assertEqual(ctx.exception.status,status)
@@ -20,13 +24,13 @@ class Core(Base):
   r=self.paid();app.operate(self.p,'pay',{'id':r['id'],'success':True})
   with app.connect() as c:self.assertEqual(c.execute('SELECT COUNT(*) FROM payments').fetchone()[0],1)
  def test_failed_payment_no_pass(self):
-  r=self.reg();app.operate(self.p,'pay',{'id':r['id'],'success':False})
+  r=self.approved();app.operate(self.p,'pay',{'id':r['id'],'success':False})
   self.problem(400,lambda:app.operate(self.staff,'scan',{'token':r['token']}))
  def test_duplicate_meal(self):
   r=self.paid();app.operate(self.staff,'scan',{'token':r['token']})
   self.problem(409,lambda:app.operate(self.staff,'scan',{'token':r['token']}))
   self.assertEqual(app.operate(self.staff,'state',{})['totals']['consumed'],1)
- def test_tenant_isolation(self): self.problem(404,lambda:app.operate({**self.staff,'tenant':'club-other'},'state',{}))
+ def test_tenant_isolation(self): self.problem(404,lambda:app.operate({**self.staff,'tenant':'club-other'},'state',{'event_id':'salento'}))
  def test_participant_cannot_scan(self):self.problem(403,lambda:app.operate(self.p,'scan',{'token':'x'}))
  def test_restaurant_no_identities_or_finance(self):
   self.paid();s=app.operate({**self.staff,'role':'restaurant'},'state',{})
@@ -34,14 +38,14 @@ class Core(Base):
  def test_last_place_concurrent(self):
   with app.connect() as c:c.execute("UPDATE events SET capacity=1 WHERE id='salento'")
   def run(i):
-   try:self.reg('concurrent-'+str(i));return True
+   try:self.approved('concurrent-'+str(i));return True
    except app.Problem:return False
   with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:self.assertEqual(sum(pool.map(run,range(8))),1)
  def test_expired_hold_frees_place(self):
-  r=self.reg()
+  r=self.approved()
   with app.connect() as c:
    c.execute("UPDATE events SET capacity=1 WHERE id='salento'");c.execute('UPDATE registrations SET expires=0 WHERE id=?',(r['id'],))
-  self.reg('new-valid-key');self.problem(409,lambda:app.operate(self.p,'pay',{'id':r['id'],'success':True}))
+  self.approved('new-valid-key');self.problem(409,lambda:app.operate(self.p,'pay',{'id':r['id'],'success':True}))
  def test_sos_notification_idempotency_and_states(self):
   b={'key':'sos-test-key','message':'Test demo'};r=app.operate(self.p,'sos',b)
   self.assertEqual(r['id'],app.operate(self.p,'sos',b)['id'])
@@ -68,15 +72,17 @@ class Core(Base):
  def test_individual_passes(self):self.assertNotEqual(self.reg()['token'],self.reg('second-person')['token'])
 class HTTP(Base):
  def test_http_auth_csrf_and_headers(self):
-  http=app.ThreadingHTTPServer(('127.0.0.1',0),app.Handler);t=threading.Thread(target=http.serve_forever,daemon=True);t.start();url='http://127.0.0.1:'+str(http.server_port)
+  app.create_user('staff-test','test-password-123','staff','club-demo')
+  http=app.make_server('127.0.0.1',0);t=threading.Thread(target=http.serve_forever,daemon=True);t.start();url='http://127.0.0.1:'+str(http.server_port)
   try:
    with urllib.request.urlopen(url+'/') as r:self.assertIn("frame-ancestors 'none'",r.headers['Content-Security-Policy'])
    with self.assertRaises(urllib.error.HTTPError) as e:urllib.request.urlopen(url+'/api/state')
    self.assertEqual(e.exception.code,401)
-   req=urllib.request.Request(url+'/api/login',data=b'{"role":"staff"}',headers={'Content-Type':'application/json','X-Europa-Demo':'1'})
+   req=urllib.request.Request(url+'/api/login',data=b'{"username":"staff-test","password":"test-password-123"}',headers={'Content-Type':'application/json','X-Europa-Demo':'1'})
    with urllib.request.urlopen(req) as r:cookie=r.headers['Set-Cookie'];s=json.load(r)
    req=urllib.request.Request(url+'/api/ack',data=b'{}',headers={'Content-Type':'application/json','X-Europa-Demo':'1','Cookie':cookie})
    with self.assertRaises(urllib.error.HTTPError) as e:urllib.request.urlopen(req)
    self.assertEqual(e.exception.code,403)
   finally:http.shutdown();http.server_close();t.join()
 if __name__=='__main__':unittest.main()
+

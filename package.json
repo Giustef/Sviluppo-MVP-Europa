@@ -2,7 +2,7 @@
   "name": "progetto-europa-demo",
   "private": true,
   "scripts": {
-    "test": "python -m unittest discover -s tests -v",
-    "dev:python": "/usr/bin/python3 server.py"
+    "test": "python -m unittest discover -s tests -v && node tests/test_web.cjs && node tests/test_ui.cjs",
+    "dev:python": "python3 server.py"
   }
 }
